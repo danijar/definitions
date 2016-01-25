@@ -1,0 +1,5 @@
+type: list
+collection: True
+arguments:
+  type: ArgumentParsers
+  module: argparse

@@ -1,0 +1,3 @@
+type: list
+collection: True
+arguments: int

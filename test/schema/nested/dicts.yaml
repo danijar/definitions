@@ -1,0 +1,8 @@
+type: dict
+collection: True
+arguments:
+  nested:
+    type: dict
+    collection: True
+    arguments:
+      key: str

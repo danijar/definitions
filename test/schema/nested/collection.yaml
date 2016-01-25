@@ -1,0 +1,7 @@
+type: list
+collection: True
+arguments:
+  type: list
+  collection: True
+  arguments:
+    type: int

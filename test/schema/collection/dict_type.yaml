@@ -1,0 +1,5 @@
+type: dict
+collection: True
+arguments:
+  key1: str
+  key2: str

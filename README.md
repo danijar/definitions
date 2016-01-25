@@ -27,16 +27,17 @@ Schema
 ------
 
 Schemas are defined in a nested way. For example, you can specify the schemas
-for required keys of a dict or for constructor arguments of a class. All top-level entries of the schema are held by a dict. The following keys have
-a special meaning.
+for required keys of a dict or for constructor arguments of a class. The
+following keys have a special meaning.
 
 | Key | Description |
 | --- | ----------- |
 | `type` | Name of Python type Name of the Python type or base class. |
 | `module` | Where to import non-primitive types from. |
 | `default` | Parsed when the key is not specified. |
-| `arguments` | Nested list of schemas describing how constructor arguments should be parsed. |
-| `elements` | Nested schema or list of schemas. A collection of matching elements will be passed to the constructor. |
+| `arguments` | Dict (`**kwargs`) or list (`*args`) of nested schemas describing how constructor arguments should be parsed. |
+| `collection` | Boolean whether arguments should be passed as a collection
+list or dict rather than being unpacked as kwargs or args. Defaults to false. |
 
 Example
 -------
@@ -44,14 +45,17 @@ Example
 ### Definition
 
 ```yaml
-cost: SquaredError
-constraints:
-- angle: 70
-- type: HINGE
-  angle: 120
-distribution:
-  type: Gaussian
-  variance: 2.5
+type: dict
+collection: True
+arguments:
+  cost: SquaredError
+  constraints:
+  - angle: 70
+  - type: HINGE
+    angle: 120
+  distribution:
+    type: Gaussian
+    variance: 2.5
 ```
 
 ### Schema
@@ -62,7 +66,8 @@ cost:
   module: mypackage.cost
 constraints:
   type: list
-  elements:
+  collection: True
+  arguments:
     type: Constraint
     module: mypackage.constraint
     parameters:
@@ -114,6 +119,21 @@ assert not definition.backup
 Advanced Features
 -----------------
 
+### Collection of arbitrary types
+
+The `elements` key must be present in the schema so that values are not parsed
+as keyword arguments to the constructor, but passed as a single dict or list.
+
+```yaml
+type: list
+collection: True
+```
+
+### Enumerations
+
+Usually, types get instantiated. However, for enumerations the corresponding
+constant is stored. Just use a `type` that inherits from Python's `enum`.
+
 ### Access items in dict as properties
 
 Passing `attribute_dicts=True` to the parser consturctor substitutes all `dict`
@@ -141,31 +161,36 @@ Keys without a special meaning will always be passed as keyword arguments to
 the constructur of the type. This allows subclasses to accept additional
 parameters that are not listed in the base constructor.
 
-### Lists containing multiple types
+### Types rather than instances
 
-Just list a collection of multiple elements after the `elements` key.
-
-```yaml
-people:
-  type: set
-  elements:
-  - type: Worker
-    module: mypackage.people
-  - type: Visitor
-    module: mypackage.people
-```
-
-This can parse definitions like this:
+Usually, it turns out that working on instance objects is a better design than
+working on type objects. However, it is possible. Note that the object will
+first be instantiated and the type inferred afterwards.
 
 ```yaml
-people:
-- Worker
-- type: Worker
-  name: John
-- Visitor
+type: type
+arguments:
+    type: BaseClass
+    module: mypackage
 ```
 
-### Enumerations
+For arbitraty types, this becomes quite simple.
 
-Usually, types get instantiated. However, for enumerations the corresponding
-constant is stored. Just use a `type` that inherits from Python's `enum`.
+```yaml
+type: type
+```
+
+### Callables as types
+
+The `type` key works with any callable, not just constructors. The return value
+of the callable will be stored under the key.
+
+```yaml
+filter:
+    type: compile
+    module: regex
+```
+
+```yaml
+filter: '.*'
+```

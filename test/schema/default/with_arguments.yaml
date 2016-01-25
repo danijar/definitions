@@ -1,0 +1,5 @@
+type: ArgumentParser
+module: argparse
+default:
+  prog: Program name.
+  description: A nice tool.

@@ -1,0 +1,14 @@
+type: combine
+module: datetime
+arguments:
+  date:
+    type: date
+    module: datetime
+    arguments:
+      year: int
+      month: int
+      day: int
+  time:
+    type: time
+    module: datetime
+    default: time

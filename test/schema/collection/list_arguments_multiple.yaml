@@ -1,0 +1,8 @@
+type: list
+collection: True
+arguments:
+- type: ArgumentParser
+  arguments:
+    prog: str
+    description: str
+- type: str
