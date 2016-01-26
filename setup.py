@@ -26,10 +26,10 @@ class TestCommand(test):
             pass
 
     def run_tests(self):
-        self._call('python -m pytest --cov=definitions test')
-        self._call('python -m pylint definitions')
-        self._call('python -m pylint test')
-        self._call('python -m pylint setup.py')
+        self._call('python3 -m pytest --cov=definitions test')
+        self._call('python3 -m pylint definitions')
+        self._call('python3 -m pylint test')
+        self._call('python3 -m pylint setup.py')
         self._check()
 
     def _call(self, command):

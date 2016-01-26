@@ -95,7 +95,8 @@ from mypackage.contraint import Constraint, ConstraintType
 from mypackage.distribution import Gaussian
 
 
-definition = Parser('schema.yaml', 'definition.yaml', attribute_dicts=True)
+parser = Parser('schema.yaml', attribute_dicts=True)
+definition = parser('definition.yaml')
 
 assert isinstance(definition.cost, SquaredError)
 
@@ -142,10 +143,10 @@ accessed as attributes. You can also explicitly use this type in the schema to
 allow attribute access only for some of the dicts.
 
 ```python
-definition = Parser('schema.yaml', 'definition.yaml')
+definition = Parser('schema.yaml')('definition.yaml')
 assert definition['key'] == value
 
-definition = Parser('schema.yaml', 'definition.yaml', attribute_dicts=True)
+definition = Parser('schema.yaml', attribute_dicts=True)('definition.yaml')
 assert definition.key == value
 ```
 

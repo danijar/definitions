@@ -1,0 +1,19 @@
+[MESSAGES CONTROL]
+
+disable=
+    locally-disabled,
+    too-many-instance-attributes,
+    missing-docstring,
+    fixme,
+    too-few-public-methods,
+    invalid-name,
+    no-member,
+    redefined-outer-name
+
+[REPORTS]
+
+reports=no
+
+[BASIC]
+
+docstring-min-length=2

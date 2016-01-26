@@ -13,16 +13,16 @@ class Parser:
     def _load(self, content):
         pass
 
-    def _parse(self, subschema, subdefinition):
+    def _parse(self, schema, definition):
         pass
 
-    def _parse_a(self, subschema, subdefinition):
+    def _parse_a(self, schema, definition):
         pass
 
-    def _parse_b(self, subschema, subdefinition):
+    def _parse_b(self, schema, definition):
         pass
 
-    def _parse_c(self, subschema, subdefinition):
+    def _parse_c(self, schema, definition):
         pass
 
     def _get_type(self, module, typename):
