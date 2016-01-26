@@ -35,9 +35,10 @@ following keys have a special meaning.
 | `type` | Name of Python type Name of the Python type or base class. |
 | `module` | Where to import non-primitive types from. |
 | `default` | Parsed when the key is not specified. |
-| `arguments` | Dict (`**kwargs`) or list (`*args`) of nested schemas describing how constructor arguments should be parsed. |
-| `collection` | Boolean whether arguments should be passed as a collection
-list or dict rather than being unpacked as kwargs or args. Defaults to false. |
+| `arguments` | Mapping or single nested schema describing constructor arguments. |
+| `elements` | List or single nested schema describing valid elements that are passed as a collection to the constructor. |
+
+Only one of `arguments` and `elements` can be specified at the same time.
 
 Example
 -------
@@ -66,21 +67,18 @@ cost:
   module: mypackage.cost
 constraints:
   type: list
-  collection: True
-  arguments:
+  elements:
     type: Constraint
     module: mypackage.constraint
-    parameters:
+    arguments:
       constraint_type: ConstraintType
       module: mypackage.constraint
 distribution:
   type: Distribution
   module: mypackage.distribution
-  parameters:
-    mean:
-      type: float
-    variance:
-      type: float
+  arguments:
+    mean: float
+    variance: float
 backup:
   type: bool
   default: false
@@ -122,18 +120,17 @@ Advanced Features
 
 ### Collection of arbitrary types
 
-The `elements` key must be present in the schema so that values are not parsed
-as keyword arguments to the constructor, but passed as a single dict or list.
+Don't specify the `elements` key of a list or the `arguments` of a dict.
 
 ```yaml
 type: list
-collection: True
 ```
 
 ### Enumerations
 
 Usually, types get instantiated. However, for enumerations the corresponding
-constant is stored. Just use a `type` that inherits from Python's `enum`.
+constant is stored instead. Just use a `type` that inherits from Python 3's
+`enum`.
 
 ### Access items in dict as properties
 
@@ -152,9 +149,17 @@ assert definition.key == value
 
 ### Defaults for constructor arguments
 
-It is possible to define defaults for arguments in the schema. However, it's
-recommended to define default arguments in the constructor of the class
-instead, so that there is no duplication.
+It is recommended to define arguments defaults in the constructor of the base
+class. However, for standard types, it can make sense to define argument
+defaults.
+
+```yaml
+type: ArgumentParser
+module: argparse
+arguments:
+  prog: Program name.
+  description: Description.
+```
 
 ### Unknown arguments
 
@@ -188,8 +193,8 @@ of the callable will be stored under the key.
 
 ```yaml
 filter:
-    type: compile
-    module: regex
+  type: compile
+  module: regex
 ```
 
 ```yaml
