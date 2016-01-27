@@ -7,12 +7,13 @@ directly instantiated from names in your definition files.
 Definition
 ----------
 
-The only reserved key in definitions is `type` which can hold the name of a
-subclass of the the type defined in the schema. Now, let's take a look at the
-schema.
+Definitions can contain any valid YAML. The only reserved key in definitions is
+`type` which can hold the name of a subclass of the the type defined in the
+schema. If for a key just a single value is provided, it will be parsed as a
+type name if possible, and otherwise as a value.
 
 ```yaml
-key1: value
+key1: foo
 key2: ClassName
 key3:
   argument1: foo
@@ -21,6 +22,10 @@ key4:
   type: SubClassName
   argument1: foo
   argument2: 42
+key5:
+- value1
+- value2
+- value3
 ```
 
 Schema
@@ -36,9 +41,10 @@ following keys have a special meaning.
 | `module` | Where to import non-primitive types from. |
 | `default` | Parsed when the key is not specified. |
 | `arguments` | Mapping or single nested schema describing constructor arguments. |
-| `elements` | List or single nested schema describing valid elements that are passed as a collection to the constructor. |
+| `elements` | Nested schema of elements that are passed as a list to the constructor. |
+| `mapping` | Nested schema of values that are passed as a dict with string keys to the constructor. |
 
-Only one of `arguments` and `elements` can be specified at the same time.
+Only one of `arguments` and `elements` and `mapping` can be specified at the same time.
 
 Example
 -------
@@ -93,7 +99,7 @@ from mypackage.contraint import Constraint, ConstraintType
 from mypackage.distribution import Gaussian
 
 
-parser = Parser('schema.yaml', attribute_dicts=True)
+parser = Parser('schema.yaml', attrdicts=True)
 definition = parser('definition.yaml')
 
 assert isinstance(definition.cost, SquaredError)
@@ -134,7 +140,7 @@ constant is stored instead. Just use a `type` that inherits from Python 3's
 
 ### Access items in dict as properties
 
-Passing `attribute_dicts=True` to the parser consturctor substitutes all `dict`
+Passing `attrdicts=True` to the parser consturctor substitutes all `dict`
 types with `AttributeDict`. This is just a Python dict except keys can be
 accessed as attributes. You can also explicitly use this type in the schema to
 allow attribute access only for some of the dicts.
@@ -143,7 +149,7 @@ allow attribute access only for some of the dicts.
 definition = Parser('schema.yaml')('definition.yaml')
 assert definition['key'] == value
 
-definition = Parser('schema.yaml', attribute_dicts=True)('definition.yaml')
+definition = Parser('schema.yaml', attrdicts=True)('definition.yaml')
 assert definition.key == value
 ```
 

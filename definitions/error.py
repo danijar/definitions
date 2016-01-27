@@ -4,3 +4,7 @@ class ExpectedKey(Exception):
 
 class UnknownKey(Exception):
     pass
+
+
+class InvalidSchema(Exception):
+    pass

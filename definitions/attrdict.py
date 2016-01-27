@@ -1,4 +1,4 @@
-class AttributeDict(dict):
+class AttrDict(dict):
 
     def __getattr__(self, key):
         if key not in self:
@@ -9,3 +9,11 @@ class AttributeDict(dict):
         if key not in self:
             raise AttributeError
         self[key] = value
+
+
+class DefaultAttrDict(AttrDict):
+
+    def __getattr__(self, key):
+        if key not in self:
+            return None
+        return super()[key]
