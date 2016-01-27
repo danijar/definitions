@@ -1,10 +1,6 @@
-class ExpectedKey(Exception):
+class SchemaError(Exception):
     pass
 
 
-class UnknownKey(Exception):
-    pass
-
-
-class InvalidSchema(Exception):
+class DefinitionError(Exception):
     pass

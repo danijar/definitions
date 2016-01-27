@@ -8,27 +8,23 @@ from definitions.attrdict import AttrDict, DefaultAttrDict
 class Parser:
 
     def __init__(self, schema):
-        self._schema = self._load(schema)
-        self._schema = self._use_attrdicts(self._schema, fallbacks=True)
-        self._validate_schema()
+        schema = self._load(schema)
+        schema = self._use_attrdicts(schema, fallbacks=True)
+        self._validate_schema(schema)
+        self._schema = schema
 
     def __call__(self, definition, attrdicts=True):
         definition = self._load(definition)
-        definition = self._parse(self._schema, definition)
+        definition = self._parse('schema root', self._schema, definition)
         if attrdicts:
             definition = self._use_attrdicts(definition)
         return definition
 
-    def _load(self, source):
-        """Load a YAML file or string."""
-        if source and os.path.isfile(source):
-            with open(source) as file_:
-                return yaml.load(file_)
-        return yaml.load(source)
-
     def _validate_schema(self, schema):
-        if not isinstance(schema, dict):
+        if schema is None:
             return
+        if not isinstance(schema, dict):
+            raise SchemaError('schema must be nested dicts')
         # Mutually exclusive keys
         exclusives = ('arguments', 'elements', 'mapping')
         if sum(x in schema for x in exclusives) > 1:
@@ -37,6 +33,10 @@ class Parser:
         # Recursively check nested schemas
         if schema.arguments:
             self._validate_schema(schema.arguments)
+        if schema.elements:
+            self._validate_schema(schema.elements)
+        if schema.mapping:
+            self._validate_schema(schema.mapping)
 
     def _use_attrdicts(self, structure, fallbacks=False):
         """
@@ -48,25 +48,31 @@ class Parser:
             return structure
         mapping = {}
         for key, value in structure.items():
-            value = self._use_attrdicts(value)
+            value = self._use_attrdicts(value, fallbacks)
             mapping[key] = value
-        return DefaultAttrDict(mapping) if fallbacks else AttrDict(mapping)
+        if fallbacks:
+            return DefaultAttrDict(mapping)
+        else:
+            return AttrDict(mapping)
 
-    def _parse(self, schema, definition):
+    def _parse(self, name, schema, definition):
         if not schema:
+            if definition is None:
+                message = '{}: no value for required argument'.format(name)
+                raise DefinitionError(message)
             return definition
         if not definition:
-            return self._parse_default(schema)
+            return self._parse_default(name, schema)
         if 'arguments' in schema:
-            return self._parse_arguments(schema, definition)
+            return self._parse_arguments(name, schema, definition)
         if 'elements' in schema:
-            return self._parse_elements(schema, definition)
+            return self._parse_elements(name, schema, definition)
         if 'mapping' in schema:
-            return self._parse_mapping(schema, definition)
+            return self._parse_mapping(name, schema, definition)
         else:
-            return self._parse_type(schema, definition)
+            return self._parse_single(name, schema, definition)
 
-    def _parse_arguments(self, schema, definition):
+    def _parse_arguments(self, name, schema, definition):
         """
         Definition should contain kwargs and possibly a type.
         """
@@ -74,69 +80,87 @@ class Parser:
         subtype = self._find_type(schema.module, definition.pop('type', None))
         subtype = subtype or base
         # Validate subtype from definition.
-        if not isinstance(subtype, base):
-            raise DefinitionError('{} does not inherit from {}'.format(
-                subtype.__name__, base.__name__))
+        if not issubclass(subtype, base):
+            message = ('{}: {} does not inherit from {}'
+                       .format(name, subtype.__name__, base.__name__))
+            raise DefinitionError(message)
         # Collect and recursively parse arguments.
         arguments = {k: v.default for k, v in schema.arguments.items()}
         if isinstance(definition, dict):
             arguments.update(definition)
         for key, value in arguments.items():
             subschema = schema.arguments.get(key, None)
-            arguments[key] = self._parse(subschema, value)
+            arguments[key] = self._parse(key, subschema, value)
         return subtype(**arguments)
 
-    def _parse_elements(self, schema, definition):
+    def _parse_elements(self, name, schema, definition):
         """
         Definition chould contain a list used as only argument.
         """
-        base = self._find_type(schema.module, schema.type)
-        elements = [self._parse(schema.elements, x) for x in definition]
+        base = self._find_type(schema.module, schema.type) or object
+        elements = [self._parse(name + ' elements', schema.elements, x)
+                    for x in definition]
         try:
             return base(elements)
         except ValueError:
-            raise SchemaError(
-                'cannot instantiate {} from a list'.format(base.__name__))
+            message = ('{}: cannot instantiate {} from a list'
+                       .format(name, base.__name__))
+            raise SchemaError(message)
 
-    def _parse_mapping(self, schema, definition):
+    def _parse_mapping(self, name, schema, definition):
         """
         Definition should contain a dict used as only argument.
         """
-        base = self._find_type(schema.module, schema.type)
-        mapping = {k: self._parse(schema.mapping, v)
+        base = self._find_type(schema.module, schema.type) or object
+        mapping = {k: self._parse(name + ' mapping', schema.mapping, v)
                    for k, v in definition.items()}
         try:
             return base(mapping)
         except ValueError:
-            raise SchemaError(
-                'cannot instantiate {} from a mapping'.format(base.__name__))
+            message = ('{}: cannot instantiate {} from a mapping'
+                       .format(name, base.__name__))
+            raise SchemaError(message)
 
-    def _parse_type(self, schema, definition):
+    def _parse_single(self, name, schema, definition):
         """
-        Definition could be a subtype or only argument.
+        Definition could be a subtype, only argument or single value.
         """
         base = self._find_type(schema.module, schema.type)
         subtype = self._find_type(schema.module, definition)
         if subtype and isinstance(subtype, base):
-            arguments = self._parse(schema.arguments, None)
+            arguments = self._parse(name + ' argument', schema.arguments, None)
             return subtype(**arguments)
+        elif base:
+            argument = self._parse(name, schema.arguments, definition)
+            return base(argument)
         else:
-            arguments = self._parse(schema.arguments, definition)
-            return base(**arguments)
+            return definition
 
-    def _parse_default(self, schema, definition):
+    def _parse_default(self, name, schema):
         """
         Use default from schema or raise error.
         """
-        assert definition is None
-        if schema is None:
-            raise DefinitionError('not specified value has no default')
-        return self._parse(schema, schema.default)
+        if schema.default:
+            return self._parse(name, schema, schema.default)
+        # See if all arguments have defaults.
+        if schema.arguments:
+            if all('default' in x for x in schema.arguments.values()):
+                return self._parse_arguments(name, schema, {})
+        message = '{}: omitted value that has no default'.format(name)
+        raise DefinitionError(message)
+
+    @staticmethod
+    def _load(source):
+        """Load a YAML file or string."""
+        if source and os.path.isfile(source):
+            with open(source) as file_:
+                return yaml.load(file_)
+        return yaml.load(source)
 
     @staticmethod
     def _find_type(module, name):
-        if name:
-            return object
+        if not isinstance(name, str):
+            return None
         scopes = [__builtins__]
         if module:
             __import__(module)

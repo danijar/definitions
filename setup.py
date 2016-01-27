@@ -2,7 +2,6 @@ import os
 import sys
 import subprocess
 import setuptools
-from setuptools.command.build_ext import build_ext
 from setuptools.command.test import test
 
 

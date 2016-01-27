@@ -1,5 +1,12 @@
-type: ArgumentParser
-module: argparse
-default:
-  prog: A default program.
-  description: A default description.
+type: date
+module: datetime
+arguments:
+  year:
+    type: int
+    default: 42
+  month:
+    type: int
+    default: 1
+  day:
+    type: int
+    default: 1

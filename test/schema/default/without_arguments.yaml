@@ -1,5 +1,6 @@
-type: ArgumentParser
-module: argparse
+type: date
+module: datetime
 arguments:
-  prog:
-  description:
+  year: int
+  month: int
+  day: int

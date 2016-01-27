@@ -11,9 +11,9 @@ class AttrDict(dict):
         self[key] = value
 
 
-class DefaultAttrDict(AttrDict):
+class DefaultAttrDict(dict):
 
     def __getattr__(self, key):
         if key not in self:
             return None
-        return super()[key]
+        return self[key]
