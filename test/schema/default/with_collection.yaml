@@ -1,5 +1,5 @@
 type: list
-collection: True
+elements:
 default:
 - 13
 - 42

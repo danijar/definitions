@@ -16,14 +16,30 @@ class TestAny:
         with pytest.raises(DefinitionError):
             Parser('')('')
 
-    def test_no_default_has_value(self):
-        assert Parser('')('13') == 13
-
     def test_has_default_no_value(self):
         assert Parser('default: 42')('') == 42
 
+    def test_no_default_has_value(self):
+        assert Parser('')('13') == 13
+
     def test_has_default_has_value(self):
         assert Parser('default: 42')('13') == 13
+
+
+class TestType:
+
+    def test_no_default_no_value(self):
+        with pytest.raises(DefinitionError):
+            Parser('type: int')('')
+
+    def test_has_default_no_value(self):
+        assert Parser('{type: int, default: 42}')('') == 42
+
+    def test_no_default_has_value(self):
+        assert Parser('type: int')('13') == 13
+
+    def test_has_default_has_value(self):
+        assert Parser('{type: int, default: 42}')('13') == 13
 
 
 class TestArguments:
@@ -33,17 +49,17 @@ class TestArguments:
         with pytest.raises(DefinitionError):
             Parser(schema)('')
 
-    def test_no_default_has_value(self):
-        definition = filename('definition/default/arguments.yaml')
-        definition = Parser('')(definition)
-        assert isinstance(definition, dict)
-        assert definition.year == 13
-
     def test_has_default_no_value(self):
         schema = filename('schema/default/with_arguments.yaml')
         definition = Parser(schema)('')
         assert isinstance(definition, date)
         assert definition.year == 42
+
+    def test_no_default_has_value(self):
+        definition = filename('definition/default/arguments.yaml')
+        definition = Parser('')(definition)
+        assert isinstance(definition, dict)
+        assert definition.year == 13
 
     def test_has_default_has_value(self):
         schema = filename('schema/default/with_arguments.yaml')
@@ -52,3 +68,31 @@ class TestArguments:
         definition = parser(definition)
         assert isinstance(definition, date)
         assert definition.year == 13
+
+
+class TestCollection:
+
+    def test_no_default_no_value(self):
+        schema = filename('schema/default/without_collection.yaml')
+        with pytest.raises(DefinitionError):
+            Parser(schema)('')
+
+    def test_has_default_no_value(self):
+        schema = filename('schema/default/with_collection.yaml')
+        definition = Parser(schema)('')
+        assert isinstance(definition, list)
+        assert definition == [13, 42]
+
+    def test_no_default_has_value(self):
+        definition = filename('definition/default/collection.yaml')
+        definition = Parser('')(definition)
+        assert isinstance(definition, list)
+        assert definition == ['Foo']
+
+    def test_has_default_has_value(self):
+        schema = filename('schema/default/with_collection.yaml')
+        parser = Parser(schema)
+        definition = filename('definition/default/collection.yaml')
+        definition = parser(definition)
+        assert isinstance(definition, list)
+        assert definition == ['Foo']
