@@ -91,7 +91,7 @@ class Parser:
         for key, value in arguments.items():
             subschema = schema.arguments.get(key, None)
             arguments[key] = self._parse(key, subschema, value)
-        return subtype(**arguments)
+        return self._instantiate(name, subtype, **arguments)
 
     def _parse_elements(self, name, schema, definition):
         """
@@ -100,12 +100,7 @@ class Parser:
         base = self._find_type(schema.module, schema.type) or object
         elements = [self._parse(name + ' elements', schema.elements, x)
                     for x in definition]
-        try:
-            return base(elements)
-        except ValueError:
-            message = ('{}: cannot instantiate {} from a list'
-                       .format(name, base.__name__))
-            raise SchemaError(message)
+        return self._instantiate(name, base, elements)
 
     def _parse_mapping(self, name, schema, definition):
         """
@@ -114,12 +109,7 @@ class Parser:
         base = self._find_type(schema.module, schema.type) or object
         mapping = {k: self._parse(name + ' mapping', schema.mapping, v)
                    for k, v in definition.items()}
-        try:
-            return base(mapping)
-        except ValueError:
-            message = ('{}: cannot instantiate {} from a mapping'
-                       .format(name, base.__name__))
-            raise SchemaError(message)
+        return self._instantiate(name, base, mapping)
 
     def _parse_single(self, name, schema, definition):
         """
@@ -129,10 +119,10 @@ class Parser:
         subtype = self._find_type(schema.module, definition)
         if subtype and isinstance(subtype, base):
             arguments = self._parse(name + ' argument', schema.arguments, None)
-            return subtype(**arguments)
+            return self._instantiate(subtype, **arguments)
         elif base:
             argument = self._parse(name, schema.arguments, definition)
-            return base(argument)
+            return self._instantiate(name, base, argument)
         else:
             return definition
 
@@ -148,6 +138,15 @@ class Parser:
                 return self._parse_arguments(name, schema, {})
         message = '{}: omitted value that has no default'.format(name)
         raise DefinitionError(message)
+
+    @staticmethod
+    def _instantiate(name, type_, *args, **kwargs):
+        try:
+            return type_(*args, **kwargs)
+        except ValueError:
+            message = ('{}: cannot instantiate {} from args={} and kwargs={}'
+                       .format(name, type_.__name__, args, kwargs))
+            raise DefinitionError(message)
 
     @staticmethod
     def _load(source):

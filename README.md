@@ -52,22 +52,20 @@ Example
 ### Definition
 
 ```yaml
-type: dict
-collection: True
-arguments:
-  cost: SquaredError
-  constraints:
-  - angle: 70
-  - type: HINGE
-    angle: 120
-  distribution:
-    type: Gaussian
-    variance: 2.5
+cost: SquaredError
+constraints:
+- angle: 70
+- type: HINGE
+  angle: 120
+distribution:
+  type: Gaussian
+  variance: 2.5
 ```
 
 ### Schema
 
 ```yaml
+type: dict
 cost:
   type: Cost
   module: mypackage.cost
@@ -77,8 +75,12 @@ constraints:
     type: Constraint
     module: mypackage.constraint
     arguments:
-      constraint_type: ConstraintType
-      module: mypackage.constraint
+      angle:
+        type: int
+      constraint_type:
+        type: ConstraintType
+        module: mypackage.constraint
+        default: ROTARY
 distribution:
   type: Distribution
   module: mypackage.distribution

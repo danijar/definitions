@@ -1,13 +1,9 @@
-# pylint: disable=no-self-use
-import os
+# pylint: disable=no-self-use, wildcard-import, unused-wildcard-import
 from datetime import date
 import pytest
 from definitions import Parser
 from definitions.error import DefinitionError
-
-
-def filename(relative):
-    return os.path.join(os.path.dirname(__file__), relative)
+from test.fixtures import *
 
 
 class TestAny:
