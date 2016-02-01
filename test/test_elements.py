@@ -1,9 +1,8 @@
-# pylint: disable=no-self-use, wildcard-import, unused-wildcard-import
+# pylint: disable=no-self-use
 from datetime import date
 import pytest
 from definitions import Parser
 from definitions.error import DefinitionError
-from test.fixtures import *
 
 
 class TestElements:
