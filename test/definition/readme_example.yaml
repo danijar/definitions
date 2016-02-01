@@ -1,0 +1,7 @@
+cost: SquaredError
+constraints:
+- angle: 70
+- angle: 120
+distribution:
+  type: Gaussian
+  variance: 2.5

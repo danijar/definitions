@@ -84,12 +84,12 @@ class Parser:
             return AttrDict(mapping)
 
     def _parse(self, name, schema, definition):
-        if not schema:
+        if schema is None:
             if definition is None:
                 message = '{}: no value for required argument'.format(name)
                 raise DefinitionError(message)
             return definition
-        if not definition:
+        if definition is None:
             return self._parse_default(name, schema)
         if 'arguments' in schema:
             return self._parse_arguments(name, schema, definition)
@@ -123,13 +123,29 @@ class Parser:
             message = message.format(name, subtypename, basename)
             raise DefinitionError(message)
         # Collect and recursively parse arguments.
-        arguments = {k: v.default for k, v in schema.arguments.items()}
+        arguments = {}
+        if schema.arguments:
+            arguments = {k: v.default for k, v in schema.arguments.items()}
         if isinstance(definition, dict):
             arguments.update(definition)
         for key, value in arguments.items():
             subschema = schema.arguments.get(key, None)
             arguments[key] = self._parse(key, subschema, value)
         return self._instantiate(name, subtype, **arguments)
+
+    def _parse_single(self, name, schema, definition):
+        """
+        Definition could be the only argument or an unspecified single value.
+        """
+        base = self._find_type(schema.module, schema.type)
+        subtype = self._find_type(schema.module, definition)
+        if subtype and issubclass(subtype, base):
+            return self._parse_arguments(name, schema, definition)
+        elif base:
+            argument = self._parse(name, schema.arguments, definition)
+            return self._instantiate(name, base, argument)
+        else:
+            return definition
 
     def _parse_mapping(self, name, schema, definition):
         """
@@ -138,10 +154,11 @@ class Parser:
         base = self._find_type(schema.module, schema.type) or object
         mapping = {}
         if not isinstance(definition, dict):
-            raise DefinitionError('mapping must be a dict')
+            message = '{}: mapping must be a dict'.format(name)
+            raise DefinitionError(message)
         for key, value in definition.items():
             if key not in schema.mapping:
-                message = 'unexpected mapping key {}'.format(key)
+                message = '{}: unexpected mapping key {}'.format(name, key)
                 raise DefinitionError(message)
             subname = '{}.{}'.format(name, key)
             subschema = schema.mapping[key]
@@ -159,22 +176,11 @@ class Parser:
                     for i, x in enumerate(definition)]
         return self._instantiate(name, base, elements)
 
-    def _parse_single(self, name, schema, definition):
-        """
-        Definition could be the only argument or an unspecified single value.
-        """
-        base = self._find_type(schema.module, schema.type)
-        if base:
-            argument = self._parse(name, schema.arguments, definition)
-            return self._instantiate(name, base, argument)
-        else:
-            return definition
-
     def _parse_default(self, name, schema):
         """
         Use default from schema or raise error.
         """
-        if schema.default:
+        if schema.default is not None:
             return self._parse(name, schema, schema.default)
         # See if all arguments have defaults.
         if schema.arguments:

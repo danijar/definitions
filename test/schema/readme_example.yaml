@@ -1,0 +1,23 @@
+type: dict
+mapping:
+  cost:
+    type: Cost
+    module: test.test_readme
+  constraints:
+    type: list
+    elements:
+      type: Constraint
+      module: test.test_readme
+      arguments:
+        angle: {type: int}
+  distribution:
+    type: Distribution
+    module: test.test_readme
+    arguments:
+      mean:
+        type: float
+        default: 0
+      variance: {type: float}
+  backup:
+    type: bool
+    default: false

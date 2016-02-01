@@ -16,6 +16,33 @@ class SubClassName(ClassName):
         super().__init__(argument1, argument2)
 
 
+class Cost:
+    pass
+
+
+class SquaredError(Cost):
+    pass
+
+
+class Constraint:
+
+    def __init__(self, angle):
+        self.angle = angle
+
+
+class Distribution:
+
+    def __init__(self, mean, variance):
+        self.mean = mean
+        self.variance = variance
+
+
+class Gaussian(Distribution):
+
+    def __init__(self, mean, variance):
+        super().__init__(mean, variance)
+
+
 class TestReadme:
 
     def test_intro(self):
@@ -31,5 +58,7 @@ class TestReadme:
         assert definition.key4.argument2 == 42
         assert definition.key5 == ['value1', 'value2', 'value3']
 
-    def test_long(self):
-        pass
+    def test_example(self):
+        parser = Parser(filename('schema/readme_example.yaml'))
+        definition = parser(filename('definition/readme_example.yaml'))
+        assert definition
