@@ -1,5 +1,6 @@
 import os
 import sys
+import inspect
 import yaml
 from definitions.error import DefinitionError, SchemaError
 from definitions.attrdict import AttrDict, DefaultAttrDict
@@ -15,7 +16,7 @@ class Parser:
 
     def __call__(self, definition, attrdicts=True):
         definition = self._load(definition)
-        definition = self._parse('schema root', self._schema, definition)
+        definition = self._parse('root', self._schema, definition)
         if attrdicts:
             definition = self._use_attrdicts(definition)
         return definition
@@ -25,18 +26,45 @@ class Parser:
             return
         if not isinstance(schema, dict):
             raise SchemaError('schema must be nested dicts')
-        # Mutually exclusive keys
+        self._validate_type(schema)
+        self._validate_exclusives(schema)
+        self._validate_nested(schema)
+
+    def _validate_type(self, schema):
+        """
+        Check if the type is available.
+        """
+        if schema.type and not self._find_type(schema.module, schema.type):
+            message = 'type {} not found in module {}'
+            message = message.format(schema.type, schema.module)
+            raise SchemaError(message)
+
+    @staticmethod
+    def _validate_exclusives(schema):
+        """
+        Mutually exclusive keys.
+        """
         exclusives = ('arguments', 'elements', 'mapping')
         if sum(x in schema for x in exclusives) > 1:
             message = '{} are mutually exclusive'.format(', '.join(exclusives))
             raise SchemaError(message)
-        # Recursively check nested schemas
+
+    def _validate_nested(self, schema):
+        """
+        Recursively check nested schemas.
+        """
         if schema.arguments:
-            self._validate_schema(schema.arguments)
+            if not isinstance(schema.arguments, dict):
+                raise SchemaError('arguments must be a dict')
+            for argument in schema.arguments.values():
+                self._validate_schema(argument)
+        if schema.mapping:
+            if not isinstance(schema.mapping, dict):
+                raise SchemaError('mapping must be a dict')
+            for value in schema.mapping.values():
+                self._validate_schema(value)
         if schema.elements:
             self._validate_schema(schema.elements)
-        if schema.mapping:
-            self._validate_schema(schema.mapping)
 
     def _use_attrdicts(self, structure, fallbacks=False):
         """
@@ -65,28 +93,36 @@ class Parser:
             return self._parse_default(name, schema)
         if 'arguments' in schema:
             return self._parse_arguments(name, schema, definition)
-        if 'elements' in schema:
-            return self._parse_elements(name, schema, definition)
         if 'mapping' in schema:
             return self._parse_mapping(name, schema, definition)
+        if 'elements' in schema:
+            return self._parse_elements(name, schema, definition)
         else:
             return self._parse_single(name, schema, definition)
 
     def _parse_arguments(self, name, schema, definition):
         """
-        Definition should contain kwargs and possibly a type.
+        Definition should be a mapping containing kwargs and possibly a type.
+        Alternatively, definition is just a typename.
         """
         base = self._find_type(schema.module, schema.get('type', object))
-        subtype = self._find_type(schema.module, definition.pop('type', None))
+        if isinstance(definition, dict):
+            subtype = definition.pop('type', None)
+        elif isinstance(definition, str):
+            subtype = definition
+        else:
+            message = '{}: dict or type name expected'.format(name)
+            raise DefinitionError(message)
+        subtype = self._find_type(schema.module, subtype)
         subtype = subtype or base
         # Validate subtype from definition.
-        if not issubclass(subtype, base):
-            message = ('{}: {} does not inherit from {}'
-                       .format(name, subtype.__name__, base.__name__))
+        if not inspect.isclass(subtype) or not issubclass(subtype, base):
+            basename = base.__name__ if base else None
+            subtypename = subtype.__name__ if subtype else None
+            message = '{}: {} does not inherit from {}'
+            message = message.format(name, subtypename, basename)
             raise DefinitionError(message)
         # Collect and recursively parse arguments.
-        if not isinstance(definition, dict):
-            raise DefinitionError('arguments must be a dict')
         arguments = {k: v.default for k, v in schema.arguments.items()}
         if isinstance(definition, dict):
             arguments.update(definition)
@@ -95,6 +131,23 @@ class Parser:
             arguments[key] = self._parse(key, subschema, value)
         return self._instantiate(name, subtype, **arguments)
 
+    def _parse_mapping(self, name, schema, definition):
+        """
+        Definition should contain a dict used as only argument.
+        """
+        base = self._find_type(schema.module, schema.type) or object
+        mapping = {}
+        if not isinstance(definition, dict):
+            raise DefinitionError('mapping must be a dict')
+        for key, value in definition.items():
+            if key not in schema.mapping:
+                message = 'unexpected mapping key {}'.format(key)
+                raise DefinitionError(message)
+            subname = '{}.{}'.format(name, key)
+            subschema = schema.mapping[key]
+            mapping[key] = self._parse(subname, subschema, value)
+        return self._instantiate(name, base, mapping)
+
     def _parse_elements(self, name, schema, definition):
         """
         Definition chould contain a list used as only argument.
@@ -102,31 +155,16 @@ class Parser:
         base = self._find_type(schema.module, schema.type) or object
         if not isinstance(definition, list):
             raise DefinitionError('elements must be a list')
-        elements = [self._parse(name + ' elements', schema.elements, x)
-                    for x in definition]
+        elements = [self._parse('{}[{}]'.format(name, i), schema.elements, x)
+                    for i, x in enumerate(definition)]
         return self._instantiate(name, base, elements)
-
-    def _parse_mapping(self, name, schema, definition):
-        """
-        Definition should contain a dict used as only argument.
-        """
-        base = self._find_type(schema.module, schema.type) or object
-        if not isinstance(definition, dict):
-            raise DefinitionError('mapping must be a dict')
-        mapping = {k: self._parse(name + ' mapping', schema.mapping, v)
-                   for k, v in definition.items()}
-        return self._instantiate(name, base, mapping)
 
     def _parse_single(self, name, schema, definition):
         """
-        Definition could be a subtype, only argument or single value.
+        Definition could be the only argument or an unspecified single value.
         """
         base = self._find_type(schema.module, schema.type)
-        subtype = self._find_type(schema.module, definition)
-        if subtype and isinstance(subtype, base):
-            arguments = self._parse(name + ' argument', schema.arguments, None)
-            return self._instantiate(subtype, **arguments)
-        elif base:
+        if base:
             argument = self._parse(name, schema.arguments, definition)
             return self._instantiate(name, base, argument)
         else:
@@ -149,9 +187,10 @@ class Parser:
     def _instantiate(name, type_, *args, **kwargs):
         try:
             return type_(*args, **kwargs)
-        except ValueError:
-            message = ('{}: cannot instantiate {} from args={} and kwargs={}'
-                       .format(name, type_.__name__, args, kwargs))
+        except (ValueError, TypeError) as error:
+            message = '{}: cannot instantiate {} from args={} and kwargs={}'
+            message = message.format(name, type_.__name__, args, kwargs)
+            message += '. ' + str(error)
             raise DefinitionError(message)
 
     @staticmethod

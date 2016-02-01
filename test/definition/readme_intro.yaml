@@ -1,0 +1,13 @@
+key1: foo
+key2: SubClassName
+key3:
+  argument1: foo
+  argument2: 42
+key4:
+  type: SubClassName
+  argument1: foo
+  argument2: 42
+key5:
+- value1
+- value2
+- value3

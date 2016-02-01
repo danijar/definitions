@@ -1,0 +1,34 @@
+type: dict
+mapping:
+  key1:
+    type: str
+  key2:
+    type: ClassName
+    module: test.test_readme
+    arguments:
+      argument1:
+        type: str
+        default: Foo
+      argument2:
+        type: int
+        default: 42
+  key3:
+    type: ClassName
+    module: test.test_readme
+    arguments:
+      argument1:
+        type: str
+      argument2:
+        type: int
+  key4:
+    type: ClassName
+    module: test.test_readme
+    arguments:
+      argument1:
+        type: str
+      argument2:
+        type: int
+  key5:
+    type: list
+    elements:
+      type: str

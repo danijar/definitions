@@ -14,7 +14,7 @@ type name if possible, and otherwise as a value.
 
 ```yaml
 key1: foo
-key2: ClassName
+key2: SubClassName
 key3:
   argument1: foo
   argument2: 42

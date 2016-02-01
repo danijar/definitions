@@ -42,3 +42,11 @@ class TestSchema:
     def test_elements_and_mapping(self):
         with pytest.raises(SchemaError):
             Parser('{elements: {}, mapping: {}}')
+
+    def test_type_found(self):
+        Parser('{type: str}')
+
+    def test_type_not_found(self):
+        Parser('{type: str}')
+        with pytest.raises(SchemaError):
+            Parser('{type: Foo}')

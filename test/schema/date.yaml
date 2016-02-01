@@ -1,6 +1,9 @@
 type: date
 module: datetime
 arguments:
-  year: int
-  month: int
-  day: int
+  year:
+    type: int
+  month:
+    type: int
+  day:
+    type: int

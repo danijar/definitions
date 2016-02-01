@@ -6,24 +6,24 @@ from definitions import Parser
 class TestUseAttrdict:
 
     def test_dict_dict_access(self):
-        parser = Parser('{type: dict, mapping: {}}')
+        parser = Parser('{type: dict, mapping: {foo: {}}}')
         definition = parser('{foo: bar}', attrdicts=False)
         assert definition['foo'] == 'bar'
 
     def test_dict_attr_access(self):
-        parser = Parser('{type: dict, mapping: {}}')
+        parser = Parser('{type: dict, mapping: {foo: {}}}')
         definition = parser('{foo: bar}', attrdicts=False)
         with pytest.raises(AttributeError):
             # pylint: disable=pointless-statement
             definition.foo
 
     def test_attrdict_attr_access(self):
-        parser = Parser('{type: dict, mapping: {}}')
+        parser = Parser('{type: dict, mapping: {foo: {}}}')
         definition = parser('{foo: bar}', attrdicts=True)
         assert definition.foo == 'bar'
 
     def test_attrdict_dict_access(self):
-        parser = Parser('{type: dict, mapping: {}}')
+        parser = Parser('{type: dict, mapping: {foo: {}}}')
         definition = parser('{foo: bar}', attrdicts=True)
         assert definition['foo'] == 'bar'
 
