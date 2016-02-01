@@ -1,5 +1,0 @@
-type: ArgumentParser
-module: argparse
-arguments:
-  prog: str
-  description: str

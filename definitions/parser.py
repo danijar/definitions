@@ -85,6 +85,8 @@ class Parser:
                        .format(name, subtype.__name__, base.__name__))
             raise DefinitionError(message)
         # Collect and recursively parse arguments.
+        if not isinstance(definition, dict):
+            raise DefinitionError('arguments must be a dict')
         arguments = {k: v.default for k, v in schema.arguments.items()}
         if isinstance(definition, dict):
             arguments.update(definition)
@@ -98,6 +100,8 @@ class Parser:
         Definition chould contain a list used as only argument.
         """
         base = self._find_type(schema.module, schema.type) or object
+        if not isinstance(definition, list):
+            raise DefinitionError('elements must be a list')
         elements = [self._parse(name + ' elements', schema.elements, x)
                     for x in definition]
         return self._instantiate(name, base, elements)
@@ -107,6 +111,8 @@ class Parser:
         Definition should contain a dict used as only argument.
         """
         base = self._find_type(schema.module, schema.type) or object
+        if not isinstance(definition, dict):
+            raise DefinitionError('mapping must be a dict')
         mapping = {k: self._parse(name + ' mapping', schema.mapping, v)
                    for k, v in definition.items()}
         return self._instantiate(name, base, mapping)

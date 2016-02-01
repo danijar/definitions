@@ -41,26 +41,26 @@ class TestType:
 class TestArguments:
 
     def test_no_default_no_value(self):
-        schema = filename('schema/default/without_arguments.yaml')
+        schema = filename('schema/date.yaml')
         with pytest.raises(DefinitionError):
             Parser(schema)('')
 
     def test_has_default_no_value(self):
-        schema = filename('schema/default/with_arguments.yaml')
+        schema = filename('schema/date_default.yaml')
         definition = Parser(schema)('')
         assert isinstance(definition, date)
         assert definition.year == 42
 
     def test_no_default_has_value(self):
-        definition = filename('definition/default/arguments.yaml')
+        definition = filename('definition/date.yaml')
         definition = Parser('')(definition)
         assert isinstance(definition, dict)
         assert definition.year == 13
 
     def test_has_default_has_value(self):
-        schema = filename('schema/default/with_arguments.yaml')
+        schema = filename('schema/date_default.yaml')
         parser = Parser(schema)
-        definition = filename('definition/default/arguments.yaml')
+        definition = filename('definition/date.yaml')
         definition = parser(definition)
         assert isinstance(definition, date)
         assert definition.year == 13
@@ -69,26 +69,26 @@ class TestArguments:
 class TestCollection:
 
     def test_no_default_no_value(self):
-        schema = filename('schema/default/without_collection.yaml')
+        schema = filename('schema/date.yaml')
         with pytest.raises(DefinitionError):
             Parser(schema)('')
 
     def test_has_default_no_value(self):
-        schema = filename('schema/default/with_collection.yaml')
+        schema = filename('schema/list_default.yaml')
         definition = Parser(schema)('')
         assert isinstance(definition, list)
         assert definition == [13, 42]
 
     def test_no_default_has_value(self):
-        definition = filename('definition/default/collection.yaml')
+        definition = filename('definition/list.yaml')
         definition = Parser('')(definition)
         assert isinstance(definition, list)
         assert definition == ['Foo']
 
     def test_has_default_has_value(self):
-        schema = filename('schema/default/with_collection.yaml')
+        schema = filename('schema/list_default.yaml')
         parser = Parser(schema)
-        definition = filename('definition/default/collection.yaml')
+        definition = filename('definition/list.yaml')
         definition = parser(definition)
         assert isinstance(definition, list)
         assert definition == ['Foo']
