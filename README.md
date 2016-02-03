@@ -1,4 +1,4 @@
-definitions
+Definitions
 ===========
 
 Load and validate YAML definitions against a schema. Classes are
