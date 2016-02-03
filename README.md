@@ -57,8 +57,7 @@ Example
 cost: SquaredError
 constraints:
 - angle: 70
-- type: HINGE
-  angle: 120
+- angle: 120
 distribution:
   type: Gaussian
   variance: 2.5
@@ -68,30 +67,27 @@ distribution:
 
 ```yaml
 type: dict
-cost:
-  type: Cost
-  module: mypackage.cost
-constraints:
-  type: list
-  elements:
-    type: Constraint
-    module: mypackage.constraint
+mapping:
+  cost:
+    type: Cost
+    module: mypackage.cost
+  constraints:
+    type: list
+    elements:
+      type: Constraint
+      module: mypackage.constraint
+      arguments:
+        angle: {type: int}
+  distribution:
+    type: Distribution
+    module: mypackage.distribution
     arguments:
-      angle:
-        type: int
-      constraint_type:
-        type: ConstraintType
-        module: mypackage.constraint
-        default: ROTARY
-distribution:
-  type: Distribution
-  module: mypackage.distribution
-  arguments:
-    mean: float
-    variance: float
-backup:
-  type: bool
-  default: false
+      mean:
+        type: float
+        default: 0
+  backup:
+    type: bool
+    default: false
 ```
 
 ### Usage in Code
@@ -99,7 +95,7 @@ backup:
 ```python
 from definitions import Parser
 from mypackage.cost import SquaredError
-from mypackage.contraint import Constraint, ConstraintType
+from mypackage.contraint import Constraint
 from mypackage.distribution import Gaussian
 
 
@@ -108,21 +104,14 @@ definition = parser('definition.yaml')
 
 assert isinstance(definition.cost, SquaredError)
 
-first = definition.constraints[0]
-assert isinstance(first, Constraint)
-assert first.get_angle() == 70
-assert first.get_type() == ConstraintType.ROTARY  # Constructor default
+assert len(definition.constraints) == 2
+assert all(isinstance(x, Constraint) for x in definition.constraints)
+assert definition.constraints[0].angle == 70
+assert definition.constraints[1].angle == 120
 
-second = definition.constraints[1]
-assert isinstance(second, Constraint)
-assert second.get_angle() == 120
-assert second.get_type() == ConstraintType.HINGE
-
-assert isinstace(definition.distribution, Gaussian)
-assert definition.distribution.get_mean() == 0
-assert definition.distribution.get_variance() == 2.5
-
-assert not definition.backup
+assert isinstance(definition.distribution, Gaussian)
+assert definition.distribution.mean == 0
+assert definition.distribution.variance == 2.5
 ```
 
 Advanced Features

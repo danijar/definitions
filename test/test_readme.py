@@ -32,15 +32,15 @@ class Constraint:
 
 class Distribution:
 
-    def __init__(self, mean, variance):
+    def __init__(self, mean):
         self.mean = mean
-        self.variance = variance
 
 
 class Gaussian(Distribution):
 
     def __init__(self, mean, variance):
-        super().__init__(mean, variance)
+        super().__init__(mean)
+        self.variance = variance
 
 
 class TestReadme:
@@ -61,4 +61,11 @@ class TestReadme:
     def test_example(self):
         parser = Parser(filename('schema/readme_example.yaml'))
         definition = parser(filename('definition/readme_example.yaml'))
-        assert definition
+        assert isinstance(definition.cost, SquaredError)
+        assert len(definition.constraints) == 2
+        assert all(isinstance(x, Constraint) for x in definition.constraints)
+        assert definition.constraints[0].angle == 70
+        assert definition.constraints[1].angle == 120
+        assert isinstance(definition.distribution, Gaussian)
+        assert definition.distribution.mean == 0
+        assert definition.distribution.variance == 2.5

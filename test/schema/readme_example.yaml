@@ -17,7 +17,6 @@ mapping:
       mean:
         type: float
         default: 0
-      variance: {type: float}
   backup:
     type: bool
     default: false
