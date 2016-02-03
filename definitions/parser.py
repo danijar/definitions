@@ -34,10 +34,17 @@ class Parser:
         """
         Check if the type is available.
         """
-        if schema.type and not self._find_type(schema.module, schema.type):
-            message = 'type {} not found in module {}'
-            message = message.format(schema.type, schema.module)
-            raise SchemaError(message)
+        if 'type' not in schema:
+            for key in ('arguments', 'elements', 'mapping'):
+                if key in schema:
+                    message = 'cannot parse {} without specified type'
+                    message.format(key)
+                    raise SchemaError(message)
+        if 'type' in schema:
+            if not self._find_type(schema.module, schema.type):
+                message = 'type {} not found in module {}'
+                message = message.format(schema.type, schema.module)
+                raise SchemaError(message)
 
     @staticmethod
     def _validate_exclusives(schema):
@@ -84,109 +91,102 @@ class Parser:
             return AttrDict(mapping)
 
     def _parse(self, name, schema, definition):
-        if schema is None:
-            if definition is None:
-                message = '{}: no value for required argument'.format(name)
-                raise DefinitionError(message)
+        has_type = schema and 'type' in schema
+        if definition is not None and not has_type:
             return definition
         if definition is None:
             return self._parse_default(name, schema)
-        if 'arguments' in schema:
-            return self._parse_arguments(name, schema, definition)
         if 'mapping' in schema:
             return self._parse_mapping(name, schema, definition)
         if 'elements' in schema:
             return self._parse_elements(name, schema, definition)
+        if isinstance(definition, dict):
+            return self._parse_arguments(name, schema, definition)
         else:
             return self._parse_single(name, schema, definition)
 
-    def _parse_arguments(self, name, schema, definition):
+    def _parse_default(self, name, schema):
         """
-        Definition should be a mapping containing kwargs and possibly a type.
-        Alternatively, definition is just a typename.
+        Parse default from schema or try to construct the type from the schema.
+        Raise an error if no default is specified and the type requires
+        arguments that have no defaults.
         """
-        base = self._find_type(schema.module, schema.get('type', object))
-        if isinstance(definition, dict):
-            subtype = definition.pop('type', None)
-        elif isinstance(definition, str):
-            subtype = definition
-        else:
-            message = '{}: dict or type name expected'.format(name)
-            raise DefinitionError(message)
-        subtype = self._find_type(schema.module, subtype)
-        subtype = subtype or base
-        # Validate subtype from definition.
-        if not inspect.isclass(subtype) or not issubclass(subtype, base):
-            basename = base.__name__ if base else None
-            subtypename = subtype.__name__ if subtype else None
-            message = '{}: {} does not inherit from {}'
-            message = message.format(name, subtypename, basename)
-            raise DefinitionError(message)
-        # Collect and recursively parse arguments.
-        arguments = {}
-        if schema.arguments:
-            arguments = {k: v.default for k, v in schema.arguments.items()}
-        if isinstance(definition, dict):
-            arguments.update(definition)
-        for key, value in arguments.items():
-            subschema = schema.arguments.get(key, None)
-            arguments[key] = self._parse(key, subschema, value)
-        return self._instantiate(name, subtype, **arguments)
-
-    def _parse_single(self, name, schema, definition):
-        """
-        Definition could be the only argument or an unspecified single value.
-        """
-        base = self._find_type(schema.module, schema.type)
-        subtype = self._find_type(schema.module, definition)
-        if subtype and issubclass(subtype, base):
-            return self._parse_arguments(name, schema, definition)
-        elif base:
-            argument = self._parse(name, schema.arguments, definition)
-            return self._instantiate(name, base, argument)
-        else:
-            return definition
+        if schema and 'default' in schema:
+            return self._parse(name, schema, schema.default)
+        if schema and 'type' in schema:
+            return self._parse_arguments(name, schema, {'type': schema.type})
+        message = '{}: omitted value that has no default'.format(name)
+        raise DefinitionError(message)
 
     def _parse_mapping(self, name, schema, definition):
         """
         Definition should contain a dict used as only argument.
         """
-        base = self._find_type(schema.module, schema.type) or object
-        mapping = {}
         if not isinstance(definition, dict):
             message = '{}: mapping must be a dict'.format(name)
             raise DefinitionError(message)
-        for key, value in definition.items():
+        mapping = {k: v.default for k, v in schema.mapping.items()}
+        mapping.update(definition)
+        for key, value in mapping.items():
             if key not in schema.mapping:
                 message = '{}: unexpected mapping key {}'.format(name, key)
                 raise DefinitionError(message)
             subname = '{}.{}'.format(name, key)
             subschema = schema.mapping[key]
             mapping[key] = self._parse(subname, subschema, value)
+        base = self._find_type(schema.module, schema.type)
         return self._instantiate(name, base, mapping)
 
     def _parse_elements(self, name, schema, definition):
         """
         Definition chould contain a list used as only argument.
         """
-        base = self._find_type(schema.module, schema.type) or object
         if not isinstance(definition, list):
             raise DefinitionError('elements must be a list')
         elements = [self._parse('{}[{}]'.format(name, i), schema.elements, x)
                     for i, x in enumerate(definition)]
+        base = self._find_type(schema.module, schema.type)
         return self._instantiate(name, base, elements)
 
-    def _parse_default(self, name, schema):
+    def _parse_arguments(self, name, schema, definition):
         """
-        Use default from schema or raise error.
+        Definition should be a mapping containing kwargs and possibly a type.
         """
-        if schema.default is not None:
-            return self._parse(name, schema, schema.default)
-        # See if all arguments have defaults.
-        if schema.arguments:
-            if all('default' in x for x in schema.arguments.values()):
-                return self._parse_arguments(name, schema, {})
-        message = '{}: omitted value that has no default'.format(name)
+        base = self._find_type(schema.module, schema.type)
+        subtype = base
+        if 'type' in definition:
+            subtype = self._find_type(schema.module, definition.pop('type'))
+            self._ensure_inherits(name, subtype, base)
+        arguments = {}
+        if 'arguments' in schema:
+            arguments = {k: v.default for k, v in schema.arguments.items()}
+        arguments.update(definition)
+        for key, value in arguments.items():
+            subschema = {}
+            if 'arguments' in schema:
+                subschema = schema.arguments.get(key, None)
+            arguments[key] = self._parse(key, subschema, value)
+        return self._instantiate(name, subtype, **arguments)
+
+    def _parse_single(self, name, schema, definition):
+        """
+        Definition is a single typename or single constructor argument.
+        """
+        base = self._find_type(schema.module, schema.get('type', object))
+        subtype = self._find_type(schema.module, definition)
+        if inspect.isclass(subtype) and issubclass(subtype, base):
+            return self._parse(name, schema, {'type': definition})
+        else:
+            return self._instantiate(name, base, definition)
+
+    @staticmethod
+    def _ensure_inherits(name, subtype, base):
+        if inspect.isclass(subtype) and issubclass(subtype, base):
+            return
+        basename = base.__name__ if base else None
+        subtypename = subtype.__name__ if subtype else None
+        message = '{}: {} does not inherit from {}'
+        message = message.format(name, subtypename, basename)
         raise DefinitionError(message)
 
     @staticmethod
@@ -209,6 +209,8 @@ class Parser:
 
     @staticmethod
     def _find_type(module, name):
+        if inspect.isclass(name):
+            return name
         if not isinstance(name, str):
             return None
         scopes = [__builtins__]

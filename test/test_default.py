@@ -22,14 +22,29 @@ class TestAny:
         assert Parser('default: 42')('13') == 13
 
 
+class ClassNoArgument:
+
+    def __init__(self):
+        self.value = 42
+
+
+class ClassArgument:
+
+    def __init__(self, value):
+        pass
+
+
 class TestType:
 
     def test_no_default_no_value(self):
         with pytest.raises(DefinitionError):
-            Parser('type: int')('')
+            Parser('{type: ClassArgument, module: test.test_default}')('')
 
     def test_has_default_no_value(self):
+        assert Parser('type: int')('') == 0
         assert Parser('{type: int, default: 42}')('') == 42
+        parser = Parser('{type: ClassNoArgument, module: test.test_default}')
+        assert parser('').value == 42
 
     def test_no_default_has_value(self):
         assert Parser('type: int')('13') == 13

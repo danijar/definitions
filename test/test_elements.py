@@ -10,6 +10,10 @@ class TestElements:
     def test_parse_elements(self):
         assert Parser('')('[1, 2, Foo]') == [1, 2, 'Foo']
 
+    def test_arbitrary_elements(self):
+        parser = Parser('{type: list, elements:}')
+        assert parser('[1, 2, Foo]') == [1, 2, 'Foo']
+
     def test_reject_non_list(self):
         parser = Parser('{type: list, elements: {}}')
         with pytest.raises(DefinitionError):
