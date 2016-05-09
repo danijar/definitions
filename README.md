@@ -176,7 +176,7 @@ that.
 
 ```yaml
 type: date
-module datetime
+module: datetime
 arguments:
   year: {type: int, default: 2000}
   ...
@@ -188,3 +188,9 @@ All types will get instantiated normally but this doesn't work for Python
 `enum`. If you are interested in using enums, please [comment on the issue][1].
 
 [1]: https://github.com/danijar/definitions/issues/6
+
+### Referencing dependencies
+
+It's possible to use objects instantiated in the definition as arguments to
+construct other objects. Just use `$path.to.object` either in the schema or
+definition. The dependency graph must be acyclic.

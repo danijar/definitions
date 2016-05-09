@@ -1,0 +1,6 @@
+type: dict
+mapping:
+  foo:
+    default: $reference
+  reference:
+    type: int

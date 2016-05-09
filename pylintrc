@@ -8,7 +8,8 @@ disable=
     too-few-public-methods,
     invalid-name,
     no-member,
-    redefined-outer-name
+    redefined-outer-name,
+    duplicate-code
 
 [REPORTS]
 

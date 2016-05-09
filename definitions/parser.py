@@ -15,35 +15,40 @@ class Candidate:
         self._kwargs = kwargs
         self._instance = None
 
-    def __repr__(self):
-        string = '<{} name={}, type={}, len(args)={}, kwargs.keys()={}>'
-        string = string.format(
-            type(self).__name__, self._name, self._type.__name__,
-            len(self._args), tuple(sorted(self._kwargs.keys())))
-        return string
+    @property
+    def name(self):
+        return self._name
 
-    def __call__(self, deps):
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def kwargs(self):
+        return self._kwargs
+
+    def __call__(self, deps=None):
         if not self._instance:
-            args = [self._resolve(x, deps) for x in self._args]
+            deps = deps or self._dependencies()
+            print(sorted(deps.keys()))
+            args = [self._resolve(x, deps) for x in self.args]
             kwargs = {k: self._resolve(v, deps)
                       for k, v in self._kwargs.items()}
             self._instance = self._instantiate(*args, **kwargs)
-        assert not isinstance(self._instance, Candidate)
         return self._instance
 
     def _resolve(self, candidate, deps):
-        # if isinstance(candidate, str) and candidate.startswith('#'):
-        #     name = 'root.' + candidate[1:]
-        #     if name not in deps:
-        #         message = 'reference {} not found'.format(candidate)
-        #         raise DefinitionError(message)
-        #     instance = self._resolve(deps[name], deps)
-        #     assert not isinstance(instance, Candidate)
-        #     return instance
+        if isinstance(candidate, str) and candidate.startswith('$'):
+            name = 'root.' + candidate[1:]
+            if name not in deps:
+                message = 'reference {} with target {} not found'
+                message = message.format(candidate, name)
+                raise DefinitionError(message)
+            return self._resolve(deps[name], deps)
         if isinstance(candidate, dict):
             return {k: self._resolve(v, deps)
                     for k, v in candidate.items()}
-        if isinstance(candidate, list):
+        if isinstance(candidate, (tuple, list)):
             return [self._resolve(x, deps) for x in candidate]
         if isinstance(candidate, Candidate):
             return candidate(deps)
@@ -59,6 +64,32 @@ class Candidate:
             message += '. ' + str(error)
             raise DefinitionError(message)
 
+    def __repr__(self):
+        string = '<{} name={}, type={}, len(args)={}, kwargs.keys()={}>'
+        string = string.format(
+            type(self).__name__, self.name, self._type.__name__,
+            len(self.args), tuple(sorted(self.kwargs.keys())))
+        return string
+
+    def _dependencies(self):
+        candidates = list(self._flat_tree(self))
+        candidates = [x for x in candidates if isinstance(x, Candidate)]
+        candidates = {x.name: x for x in candidates}
+        return candidates
+
+    @classmethod
+    def _flat_tree(cls, candidate):
+        if isinstance(candidate, dict):
+            for element in candidate.values():
+                yield from cls._flat_tree(element)
+        if isinstance(candidate, (tuple, list)):
+            for element in candidate:
+                yield from cls._flat_tree(element)
+        if isinstance(candidate, Candidate):
+            yield candidate
+            yield from cls._flat_tree(candidate.args)
+            yield from cls._flat_tree(candidate.kwargs)
+
 
 class Parser:
 
@@ -71,8 +102,7 @@ class Parser:
     def __call__(self, definition, attrdicts=True):
         definition = self._parse('root', self._schema, self._load(definition))
         if isinstance(definition, Candidate):
-            deps = []
-            definition = definition(deps)
+            definition = definition()
         if attrdicts:
             definition = self._use_attrdicts(definition)
         return definition

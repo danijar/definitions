@@ -1,4 +1,4 @@
-# pylint: disable=no-self-use
+# pylint: disable=no-self-use, duplicate-code
 import pytest
 from definitions import Parser
 from definitions.error import DefinitionError
