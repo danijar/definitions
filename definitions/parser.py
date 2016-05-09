@@ -6,6 +6,60 @@ from definitions.error import DefinitionError, SchemaError
 from definitions.attrdict import AttrDict, DefaultAttrDict
 
 
+class Candidate:
+
+    def __init__(self, name, type_, *args, **kwargs):
+        self._type = type_
+        self._name = name
+        self._args = args
+        self._kwargs = kwargs
+        self._instance = None
+
+    def __repr__(self):
+        string = '<{} name={}, type={}, len(args)={}, kwargs.keys()={}>'
+        string = string.format(
+            type(self).__name__, self._name, self._type.__name__,
+            len(self._args), tuple(sorted(self._kwargs.keys())))
+        return string
+
+    def __call__(self, deps):
+        if not self._instance:
+            args = [self._resolve(x, deps) for x in self._args]
+            kwargs = {k: self._resolve(v, deps)
+                      for k, v in self._kwargs.items()}
+            self._instance = self._instantiate(*args, **kwargs)
+        assert not isinstance(self._instance, Candidate)
+        return self._instance
+
+    def _resolve(self, candidate, deps):
+        # if isinstance(candidate, str) and candidate.startswith('#'):
+        #     name = 'root.' + candidate[1:]
+        #     if name not in deps:
+        #         message = 'reference {} not found'.format(candidate)
+        #         raise DefinitionError(message)
+        #     instance = self._resolve(deps[name], deps)
+        #     assert not isinstance(instance, Candidate)
+        #     return instance
+        if isinstance(candidate, dict):
+            return {k: self._resolve(v, deps)
+                    for k, v in candidate.items()}
+        if isinstance(candidate, list):
+            return [self._resolve(x, deps) for x in candidate]
+        if isinstance(candidate, Candidate):
+            return candidate(deps)
+        return candidate
+
+    def _instantiate(self, *args, **kwargs):
+        try:
+            return self._type(*args, **kwargs)
+        except (ValueError, TypeError) as error:
+            message = '{}: cannot instantiate {} from args={} and kwargs={}'
+            message = message.format(
+                self._name, self._type.__name__, args, kwargs)
+            message += '. ' + str(error)
+            raise DefinitionError(message)
+
+
 class Parser:
 
     def __init__(self, schema):
@@ -15,8 +69,10 @@ class Parser:
         self._schema = schema
 
     def __call__(self, definition, attrdicts=True):
-        definition = self._load(definition)
-        definition = self._parse('root', self._schema, definition)
+        definition = self._parse('root', self._schema, self._load(definition))
+        if isinstance(definition, Candidate):
+            deps = []
+            definition = definition(deps)
         if attrdicts:
             definition = self._use_attrdicts(definition)
         return definition
@@ -135,7 +191,7 @@ class Parser:
             subschema = schema.mapping[key]
             mapping[key] = self._parse(subname, subschema, value)
         base = self._find_type(schema.module, schema.type)
-        return self._instantiate(name, base, mapping)
+        return Candidate(name, base, mapping)
 
     def _parse_elements(self, name, schema, definition):
         """
@@ -146,7 +202,7 @@ class Parser:
         elements = [self._parse('{}[{}]'.format(name, i), schema.elements, x)
                     for i, x in enumerate(definition)]
         base = self._find_type(schema.module, schema.type)
-        return self._instantiate(name, base, elements)
+        return Candidate(name, base, elements)
 
     def _parse_arguments(self, name, schema, definition):
         """
@@ -166,7 +222,7 @@ class Parser:
             if 'arguments' in schema:
                 subschema = schema.arguments.get(key, None)
             arguments[key] = self._parse(key, subschema, value)
-        return self._instantiate(name, subtype, **arguments)
+        return Candidate(name, subtype, **arguments)
 
     def _parse_single(self, name, schema, definition):
         """
@@ -177,7 +233,7 @@ class Parser:
         if inspect.isclass(subtype) and issubclass(subtype, base):
             return self._parse(name, schema, {'type': definition})
         else:
-            return self._instantiate(name, base, definition)
+            return Candidate(name, base, definition)
 
     @staticmethod
     def _ensure_inherits(name, subtype, base):
@@ -188,16 +244,6 @@ class Parser:
         message = '{}: {} does not inherit from {}'
         message = message.format(name, subtypename, basename)
         raise DefinitionError(message)
-
-    @staticmethod
-    def _instantiate(name, type_, *args, **kwargs):
-        try:
-            return type_(*args, **kwargs)
-        except (ValueError, TypeError) as error:
-            message = '{}: cannot instantiate {} from args={} and kwargs={}'
-            message = message.format(name, type_.__name__, args, kwargs)
-            message += '. ' + str(error)
-            raise DefinitionError(message)
 
     @staticmethod
     def _load(source):
