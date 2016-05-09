@@ -2,48 +2,68 @@ import os
 import sys
 import subprocess
 import setuptools
-from setuptools.command.test import test
 
 
-class TestCommand(test):
+class Command(setuptools.Command):
 
-    description = 'run tests, linters and create a coverage report'
-    user_options = []
+    requires = []
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.returncode = 0
+        self._returncode = 0
 
     def finalize_options(self):
-        super().finalize_options()
-        # New setuptools don't need this anymore, thus the try block.
-        try:
-            # pylint: disable=attribute-defined-outside-init
-            self.test_args = []
-            self.test_suite = 'True'
-        except AttributeError:
-            pass
+        pass
 
-    def run_tests(self):
-        self._call('python3 -m pytest --cov=definitions test')
-        self._call('python3 -m pylint definitions')
-        self._call('python3 -m pylint test')
-        self._call('python3 -m pylint setup.py')
-        self._check()
+    def run(self):
+        if type(self).requires:
+            self.distribution.fetch_build_eggs(type(self).requires)
+            self.run_command('egg_info')
+            self.reinitialize_command('build_ext', inplace=1)
+            self.run_command('build_ext')
+        self.__call__()
+        if self._returncode:
+            sys.exit(self._returncode)
 
-    def _call(self, command):
+    def call(self, command):
         env = os.environ.copy()
         env['PYTHONPATH'] = ''.join(':' + x for x in sys.path)
-        print('Run command', command)
+        self.announce('Run command: {}'.format(command), level=2)
         try:
             subprocess.check_call(command.split(), env=env)
         except subprocess.CalledProcessError as error:
-            print('Command failed with exit code', error.returncode)
-            self.returncode = 1
+            self._returncode = 1
+            message = 'Command failed with exit code {}'
+            message = message.format(error.returncode)
+            self.announce(message, level=2)
 
-    def _check(self):
-        if self.returncode:
-            sys.exit(self.returncode)
+
+class TestCommand(Command):
+
+    requires = ['pytest', 'pytest-cov']
+    description = 'run tests and create a coverage report'
+    user_options = [('args=', None, 'args to forward to pytest')]
+
+    def initialize_options(self):
+        self.args = ''
+
+    def __call__(self):
+        self.call('python3 -m pytest --cov=definitions test ' + self.args)
+
+
+class LintCommand(Command):
+
+    requires = ['pylint']
+    description = 'run linters'
+    user_options = [('args=', None, 'args to forward to pylint')]
+
+    def initialize_options(self):
+        self.args = ''
+
+    def __call__(self):
+        self.call('python3 -m pylint definitions ' + self.args)
+        self.call('python3 -m pylint test ' + self.args)
+        self.call('python3 -m pylint setup.py ' + self.args)
 
 
 DESCRIPTION = 'Load and validate YAML definitions against a schema'
@@ -55,13 +75,6 @@ SETUP_REQUIRES = [
 INSTALL_REQUIRES = [
     'PyYAML',
 ]
-
-TESTS_REQUIRE = [
-    'pytest',
-    'pytest-cov',
-    'pylint',
-]
-
 
 if __name__ == '__main__':
     setuptools.setup(
@@ -75,7 +88,10 @@ if __name__ == '__main__':
         packages=['definitions'],
         setup_requires=SETUP_REQUIRES,
         install_requires=INSTALL_REQUIRES,
-        tests_require=TESTS_REQUIRE,
-        cmdclass={'test': TestCommand},
+        tests_require=[],
+        cmdclass={
+            'test': TestCommand,
+            'lint': LintCommand,
+        },
     )
 
