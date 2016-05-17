@@ -79,7 +79,7 @@ INSTALL_REQUIRES = [
 if __name__ == '__main__':
     setuptools.setup(
         name='definitions',
-        version='0.1.0',
+        version='0.2.0',
         description=DESCRIPTION,
         url='http://github.com/danijar/definitions',
         author='Danijar Hafner',
