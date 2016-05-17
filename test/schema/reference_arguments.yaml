@@ -1,0 +1,11 @@
+type: dict
+mapping:
+  foo:
+    type: ClassNeedsArgument
+    module: test.test_reference
+    arguments:
+      class_no_argument:
+        default: $reference
+  reference:
+    type: ClassNoArgument
+    module: test.test_reference

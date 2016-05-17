@@ -107,3 +107,9 @@ class TestCollection:
         definition = parser(definition)
         assert isinstance(definition, list)
         assert definition == ['Foo']
+
+
+class TestMapping:
+
+    def test_nested_has_default(self):
+        pass

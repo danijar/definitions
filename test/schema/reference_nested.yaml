@@ -1,0 +1,13 @@
+type: dict
+mapping:
+  foo:
+    type: dict
+    mapping:
+      nested:
+        type: int
+        default: $reference.nested
+  reference:
+    type: dict
+    mapping:
+      nested:
+        type: int

@@ -1,0 +1,12 @@
+type: dict
+mapping:
+  reference:
+    type: list
+    elements:
+      type: int
+  first:
+    default:
+      $reference[0]
+  second:
+    default:
+      $reference[1]

@@ -30,7 +30,6 @@ class Candidate:
     def __call__(self, deps=None):
         if not self._instance:
             deps = deps or self._dependencies()
-            print(sorted(deps.keys()))
             args = [self._resolve(x, deps) for x in self.args]
             kwargs = {k: self._resolve(v, deps)
                       for k, v in self._kwargs.items()}
@@ -199,6 +198,8 @@ class Parser:
         """
         if schema and 'default' in schema:
             return self._parse(name, schema, schema.default)
+        if schema and 'mapping' in schema:
+            return self._parse(name, schema, {})
         if schema and 'type' in schema:
             return self._parse_arguments(name, schema, {'type': schema.type})
         message = '{}: omitted value that has no default'.format(name)

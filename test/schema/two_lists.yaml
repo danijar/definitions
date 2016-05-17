@@ -1,0 +1,10 @@
+type: dict
+mapping:
+  foo:
+    type: list
+    elements:
+      type: int
+  bar:
+    type: list
+    elements:
+      type: int

@@ -1,0 +1,11 @@
+type: dict
+mapping:
+  foo:
+    type: list
+    elements:
+      type: int
+    default:
+    - $reference
+    - $reference
+  reference:
+    type: int

@@ -191,6 +191,8 @@ All types will get instantiated normally but this doesn't work for Python
 
 ### Referencing dependencies
 
-It's possible to use objects instantiated in the definition as arguments to
-construct other objects. Just use `$path.to.object` either in the schema or
-definition. The dependency graph must be acyclic.
+It's possible to reference keys in the definition or schema to use the
+instantiated objects in other places. For example, you can define a
+configuration object and construct several other objects from it. Just use
+`$path.to.object` either in the schema or definition. The dependency graph must
+be acyclic.
